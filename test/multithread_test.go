@@ -17,12 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"github.com/vmware/virtual-disks/pkg/disklib"
-	"github.com/vmware/virtual-disks/pkg/virtual_disks"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 	"testing"
+
+	"github.com/yrudtlr/virtual-disks/pkg/disklib"
+	"github.com/yrudtlr/virtual-disks/pkg/virtual_disks"
 )
 
 // II vs II
@@ -42,10 +42,10 @@ func TestAligned(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
-	diskReaderWriter, err := virtual_disks.Open(params, logrus.New())
+	diskReaderWriter, err := virtual_disks.Open(params)
 	if err != nil {
 		disklib.EndAccess(params)
 		t.Errorf("Open failed, got error code: %d, error message: %s.", err.VixErrorCode(), err.Error())
@@ -55,7 +55,7 @@ func TestAligned(t *testing.T) {
 	fmt.Println("---------------------WriteAt start----------------------")
 	go func() {
 		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		for i, _ := range (buf1) {
+		for i := range buf1 {
 			buf1[i] = 'A'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 0)
@@ -66,7 +66,7 @@ func TestAligned(t *testing.T) {
 
 	go func() {
 		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		for i, _ := range (buf1) {
+		for i := range buf1 {
 			buf1[i] = 'B'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 0)
@@ -106,10 +106,10 @@ func TestMiss1(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
-	diskReaderWriter, err := virtual_disks.Open(params, logrus.New())
+	diskReaderWriter, err := virtual_disks.Open(params)
 	if err != nil {
 		disklib.EndAccess(params)
 		t.Errorf("Open failed, got error code: %d, error message: %s.", err.VixErrorCode(), err.Error())
@@ -118,8 +118,8 @@ func TestMiss1(t *testing.T) {
 	done := make(chan bool)
 	fmt.Println("---------------------WriteAt start----------------------")
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
+		for i := range buf1 {
 			buf1[i] = 'C'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 500)
@@ -129,8 +129,8 @@ func TestMiss1(t *testing.T) {
 	}()
 
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 2)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+2)
+		for i := range buf1 {
 			buf1[i] = 'D'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, disklib.VIXDISKLIB_SECTOR_SIZE)
@@ -144,7 +144,7 @@ func TestMiss1(t *testing.T) {
 	}
 	// Verify written data by read
 	fmt.Println("----------Read start to verify----------")
-	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
+	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
 	n2, err5 := diskReaderWriter.ReadAt(buffer2, 500)
 	fmt.Printf("Read byte n = %d\n", n2)
 	fmt.Println(buffer2)
@@ -170,10 +170,10 @@ func TestMiss2(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
-	diskReaderWriter, err := virtual_disks.Open(params, logrus.New())
+	diskReaderWriter, err := virtual_disks.Open(params)
 	if err != nil {
 		disklib.EndAccess(params)
 		t.Errorf("Open failed, got error code: %d, error message: %s.", err.VixErrorCode(), err.Error())
@@ -182,8 +182,8 @@ func TestMiss2(t *testing.T) {
 	done := make(chan bool)
 	fmt.Println("---------------------WriteAt start----------------------")
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 12)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+12)
+		for i := range buf1 {
 			buf1[i] = 'E'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 500)
@@ -193,8 +193,8 @@ func TestMiss2(t *testing.T) {
 	}()
 
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
+		for i := range buf1 {
 			buf1[i] = 'F'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 500)
@@ -208,7 +208,7 @@ func TestMiss2(t *testing.T) {
 	}
 	// Verify written data by read
 	fmt.Println("----------Read start to verify----------")
-	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
+	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
 	n2, err5 := diskReaderWriter.ReadAt(buffer2, 500)
 	fmt.Printf("Read byte n = %d\n", n2)
 	fmt.Println(buffer2)
@@ -234,10 +234,10 @@ func TestMiss3(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
-	diskReaderWriter, err := virtual_disks.Open(params, logrus.New())
+	diskReaderWriter, err := virtual_disks.Open(params)
 	if err != nil {
 		disklib.EndAccess(params)
 		t.Errorf("Open failed, got error code: %d, error message: %s.", err.VixErrorCode(), err.Error())
@@ -246,8 +246,8 @@ func TestMiss3(t *testing.T) {
 	done := make(chan bool)
 	fmt.Println("---------------------WriteAt start----------------------")
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 12)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+12)
+		for i := range buf1 {
 			buf1[i] = 'G'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 500)
@@ -257,8 +257,8 @@ func TestMiss3(t *testing.T) {
 	}()
 
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 2)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+2)
+		for i := range buf1 {
 			buf1[i] = 'H'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, disklib.VIXDISKLIB_SECTOR_SIZE)
@@ -272,7 +272,7 @@ func TestMiss3(t *testing.T) {
 	}
 	// Verify written data by read
 	fmt.Println("----------Read start to verify----------")
-	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
+	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
 	n2, err5 := diskReaderWriter.ReadAt(buffer2, 500)
 	fmt.Printf("Read byte n = %d\n", n2)
 	fmt.Println(buffer2)
@@ -298,10 +298,10 @@ func TestMissAlign(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
-	diskReaderWriter, err := virtual_disks.Open(params, logrus.New())
+	diskReaderWriter, err := virtual_disks.Open(params)
 	if err != nil {
 		disklib.EndAccess(params)
 		t.Errorf("Open failed, got error code: %d, error message: %s.", err.VixErrorCode(), err.Error())
@@ -310,8 +310,8 @@ func TestMissAlign(t *testing.T) {
 	done := make(chan bool)
 	fmt.Println("---------------------WriteAt start----------------------")
 	go func() {
-		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
-		for i, _ := range (buf1) {
+		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
+		for i := range buf1 {
 			buf1[i] = 'A'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, 500)
@@ -322,7 +322,7 @@ func TestMissAlign(t *testing.T) {
 
 	go func() {
 		buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		for i, _ := range (buf1) {
+		for i := range buf1 {
 			buf1[i] = 'B'
 		}
 		n2, err2 := diskReaderWriter.WriteAt(buf1, disklib.VIXDISKLIB_SECTOR_SIZE)
@@ -336,7 +336,7 @@ func TestMissAlign(t *testing.T) {
 	}
 	// Verify written data by read
 	fmt.Println("----------Read start to verify----------")
-	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE + 14)
+	buffer2 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE+14)
 	n2, err5 := diskReaderWriter.ReadAt(buffer2, 500)
 	fmt.Printf("Read byte n = %d\n", n2)
 	fmt.Println(buffer2)

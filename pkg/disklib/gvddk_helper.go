@@ -19,11 +19,11 @@ package disklib
 // #include "gvddk_c.h"
 import "C"
 import (
+	"crypto/sha1"
 	"crypto/tls"
 	"fmt"
 	"net/url"
 )
-import "crypto/sha1"
 
 // Flags for open
 const (
@@ -163,12 +163,12 @@ type VixDiskLibInfo struct {
 	Uuid               string
 }
 
-func (this vddkErrorImpl) Error() string {
-	return this.err_msg
+func (e vddkErrorImpl) Error() string {
+	return e.err_msg
 }
 
-func (this vddkErrorImpl) VixErrorCode() uint64 {
-	return this.err_code
+func (e vddkErrorImpl) VixErrorCode() uint64 {
+	return e.err_code
 }
 
 func NewConnectParams(vmxSpec string, serverName string, thumbPrint string, userName string, password string,

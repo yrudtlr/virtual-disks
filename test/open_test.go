@@ -18,11 +18,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/vmware/virtual-disks/pkg/disklib"
-	"github.com/vmware/virtual-disks/pkg/virtual_disks"
 	"os"
 	"testing"
+
+	"github.com/yrudtlr/virtual-disks/pkg/disklib"
+	"github.com/yrudtlr/virtual-disks/pkg/virtual_disks"
 )
 
 func TestOpen(t *testing.T) {
@@ -41,10 +41,10 @@ func TestOpen(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
-	diskReaderWriter, err := virtual_disks.Open(params, logrus.New())
+	diskReaderWriter, err := virtual_disks.Open(params)
 	if err != nil {
 		disklib.EndAccess(params)
 		t.Errorf("Open failed, got error code: %d, error message: %s.", err.VixErrorCode(), err.Error())
@@ -71,7 +71,7 @@ func TestOpen(t *testing.T) {
 	// WriteAt
 	fmt.Println("WriteAt start")
 	buf1 := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-	for i,_ := range(buf1) {
+	for i := range buf1 {
 		buf1[i] = 'E'
 	}
 	n2, err2 := diskReaderWriter.WriteAt(buf1, 0)

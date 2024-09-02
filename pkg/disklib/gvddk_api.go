@@ -92,10 +92,9 @@ func prepareConnectParams(appGlobal ConnectParams) (*C.VixDiskLibConnectParams, 
 }
 
 func freeParams(params []*C.char) {
-	for i, _ := range params {
+	for i := range params {
 		C.free(unsafe.Pointer(params[i]))
 	}
-	return
 }
 
 func Connect(appGlobal ConnectParams) (VixDiskLibConnection, VddkError) {
@@ -217,12 +216,12 @@ func Clone(dstConnection VixDiskLibConnection, dstPath string, srcConnection Vix
 }
 
 func prepareCreateParams(createSpec VixDiskLibCreateParams) *C.VixDiskLibCreateParams {
-	var createParams *C.VixDiskLibCreateParams
+	var createParams C.VixDiskLibCreateParams
 	createParams.diskType = C.VixDiskLibDiskType(createSpec.diskType)
 	createParams.adapterType = C.VixDiskLibAdapterType(createSpec.adapterType)
 	createParams.hwVersion = C.uint16(createSpec.hwVersion)
 	createParams.capacity = C.VixDiskLibSectorType(createSpec.capacity)
-	return createParams
+	return &createParams
 }
 
 func Create(connection VixDiskLibConnection, path string, createParams VixDiskLibCreateParams, progressCallbackData string) VddkError {
@@ -251,7 +250,7 @@ func CreateChild(diskHandle VixDiskLibHandle, childPath string, diskType VixDisk
 }
 
 func createDiskInfo(diskInfo *VixDiskLibInfo) (*C.VixDiskLibInfo, []*C.char) {
-	var dliInfo *C.VixDiskLibInfo
+	var dliInfo C.VixDiskLibInfo
 	var bios C.VixDiskLibGeometry
 	var phys C.VixDiskLibGeometry
 	bios.cylinders = C.uint32(diskInfo.BiosGeo.Cylinders)
@@ -268,7 +267,7 @@ func createDiskInfo(diskInfo *VixDiskLibInfo) (*C.VixDiskLibInfo, []*C.char) {
 	dliInfo.parentFileNameHint = C.CString(diskInfo.ParentFileNameHint)
 	dliInfo.uuid = C.CString(diskInfo.Uuid)
 	var cParams = []*C.char{dliInfo.parentFileNameHint, dliInfo.uuid}
-	return dliInfo, cParams
+	return &dliInfo, cParams
 }
 
 func Grow(connection VixDiskLibConnection, path string, capacity VixDiskLibSectorType, updateGeometry bool, callbackData string) VddkError {

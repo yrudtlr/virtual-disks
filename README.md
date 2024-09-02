@@ -216,7 +216,7 @@ func Exit() {}
  * which allows read or write operations to the 
  * disk.
  */
-func Open(globalParams disklib.ConnectParams, logger logrus.FieldLogger) 
+func Open(globalParams disklib.ConnectParams) 
                   (DiskReaderWriter, disklib.VddkError) {}
 ```
 ### Read
@@ -274,7 +274,6 @@ type DiskReaderWriter struct {
 	closer   io.Closer
 	offset  *int64
 	mutex    sync.Mutex                                                                
-	logger   logrus.FieldLogger
 }
 ```
 

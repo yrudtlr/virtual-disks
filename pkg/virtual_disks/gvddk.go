@@ -22,13 +22,13 @@ import (
 	"io"
 	"sync"
 
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/vmware/virtual-disks/pkg/disklib"
+	"errors"
+
+	"github.com/yrudtlr/virtual-disks/pkg/disklib"
 )
 
 func OpenFCD(serverName string, thumbPrint string, userName string, password string, fcdId string, fcdssid string, datastore string,
-	flags uint32, readOnly bool, transportMode string, identity string, logger logrus.FieldLogger) (DiskReaderWriter, disklib.VddkError) {
+	flags uint32, readOnly bool, transportMode string, identity string) (DiskReaderWriter, disklib.VddkError) {
 	globalParams := disklib.NewConnectParams("",
 		serverName,
 		thumbPrint,
@@ -43,10 +43,10 @@ func OpenFCD(serverName string, thumbPrint string, userName string, password str
 		flags,
 		readOnly,
 		transportMode)
-	return Open(globalParams, logger)
+	return Open(globalParams)
 }
 
-func Open(globalParams disklib.ConnectParams, logger logrus.FieldLogger) (DiskReaderWriter, disklib.VddkError) {
+func Open(globalParams disklib.ConnectParams) (DiskReaderWriter, disklib.VddkError) {
 	err := disklib.PrepareForAccess(globalParams)
 	if err != nil {
 		return DiskReaderWriter{}, err
@@ -69,38 +69,35 @@ func Open(globalParams disklib.ConnectParams, logger logrus.FieldLogger) (DiskRe
 		return DiskReaderWriter{}, err
 	}
 	diskHandle := NewDiskHandle(dli, conn, globalParams, info)
-	return NewDiskReaderWriter(diskHandle, logger), nil
+	return NewDiskReaderWriter(diskHandle), nil
 }
 
 type DiskReaderWriter struct {
 	diskHandle DiskConnectHandle
 	offset     *int64
 	mutex      *sync.Mutex // Lock to ensure that multiple-threads do not break offset or see the same data twice
-	logger     logrus.FieldLogger
 }
 
-func (this DiskReaderWriter) Read(p []byte) (n int, err error) {
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
-	bytesRead, err := this.diskHandle.ReadAt(p, *this.offset)
-	*this.offset += int64(bytesRead)
-	this.logger.Infof("Read returning %d, len(p) = %d, offset=%d\n", bytesRead, len(p), *this.offset)
+func (rw DiskReaderWriter) Read(p []byte) (n int, err error) {
+	rw.mutex.Lock()
+	defer rw.mutex.Unlock()
+	bytesRead, err := rw.diskHandle.ReadAt(p, *rw.offset)
+	*rw.offset += int64(bytesRead)
 	return bytesRead, err
 }
 
-func (this DiskReaderWriter) Write(p []byte) (n int, err error) {
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
-	bytesWritten, err := this.diskHandle.WriteAt(p, *this.offset)
-	*this.offset += int64(bytesWritten)
-	this.logger.Infof("Write returning %d, len(p) = %d, offset=%d\n", bytesWritten, len(p), *this.offset)
+func (rw DiskReaderWriter) Write(p []byte) (n int, err error) {
+	rw.mutex.Lock()
+	defer rw.mutex.Unlock()
+	bytesWritten, err := rw.diskHandle.WriteAt(p, *rw.offset)
+	*rw.offset += int64(bytesWritten)
 	return bytesWritten, err
 }
 
-func (this DiskReaderWriter) Seek(offset int64, whence int) (int64, error) {
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
-	desiredOffset := *this.offset
+func (rw DiskReaderWriter) Seek(offset int64, whence int) (int64, error) {
+	rw.mutex.Lock()
+	defer rw.mutex.Unlock()
+	desiredOffset := *rw.offset
 	switch whence {
 	case io.SeekStart:
 		desiredOffset = offset
@@ -108,41 +105,39 @@ func (this DiskReaderWriter) Seek(offset int64, whence int) (int64, error) {
 		desiredOffset += offset
 	case io.SeekEnd:
 		// Fix this later
-		return *this.offset, errors.New("Seek from SeekEnd not implemented")
+		return *rw.offset, errors.New("Seek from SeekEnd not implemented")
 	}
 
 	if desiredOffset < 0 {
-		return 0, errors.New("Cannot seek to negative offset")
+		return 0, errors.New("cannot seek to negative offset")
 	}
-	*this.offset = desiredOffset
-	return *this.offset, nil
+	*rw.offset = desiredOffset
+	return *rw.offset, nil
 }
 
-func (this DiskReaderWriter) ReadAt(p []byte, off int64) (n int, err error) {
-	return this.diskHandle.ReadAt(p, off)
+func (rw DiskReaderWriter) ReadAt(p []byte, off int64) (n int, err error) {
+	return rw.diskHandle.ReadAt(p, off)
 }
 
-func (this DiskReaderWriter) WriteAt(p []byte, off int64) (n int, err error) {
-	return this.diskHandle.WriteAt(p, off)
+func (rw DiskReaderWriter) WriteAt(p []byte, off int64) (n int, err error) {
+	return rw.diskHandle.WriteAt(p, off)
 }
 
-func (this DiskReaderWriter) Close() error {
-	return this.diskHandle.Close()
+func (rw DiskReaderWriter) Close() error {
+	return rw.diskHandle.Close()
 }
 
-func (this DiskReaderWriter) QueryAllocatedBlocks(startSector disklib.VixDiskLibSectorType, numSectors disklib.VixDiskLibSectorType, chunkSize disklib.VixDiskLibSectorType) ([]disklib.VixDiskLibBlock, disklib.VddkError) {
-	return this.diskHandle.QueryAllocatedBlocks(startSector, numSectors, chunkSize)
+func (rw DiskReaderWriter) QueryAllocatedBlocks(startSector disklib.VixDiskLibSectorType, numSectors disklib.VixDiskLibSectorType, chunkSize disklib.VixDiskLibSectorType) ([]disklib.VixDiskLibBlock, disklib.VddkError) {
+	return rw.diskHandle.QueryAllocatedBlocks(startSector, numSectors, chunkSize)
 }
 
-func NewDiskReaderWriter(diskHandle DiskConnectHandle, logger logrus.FieldLogger) DiskReaderWriter {
-	var offset int64
-	offset = 0
+func NewDiskReaderWriter(diskHandle DiskConnectHandle) DiskReaderWriter {
+	offset := int64(0)
 	var mutex sync.Mutex
 	retVal := DiskReaderWriter{
 		diskHandle: diskHandle,
 		offset:     &offset,
 		mutex:      &mutex,
-		logger:     logger,
 	}
 	return retVal
 }
@@ -180,8 +175,8 @@ func aligned(len int, off int64) bool {
 	return len%disklib.VIXDISKLIB_SECTOR_SIZE == 0 && off%disklib.VIXDISKLIB_SECTOR_SIZE == 0
 }
 
-func (this DiskConnectHandle) ReadAt(p []byte, off int64) (n int, err error) {
-	capacity := this.Capacity()
+func (h DiskConnectHandle) ReadAt(p []byte, off int64) (n int, err error) {
+	capacity := h.Capacity()
 	if off >= capacity {
 		return 0, io.EOF
 	}
@@ -196,13 +191,13 @@ func (this DiskConnectHandle) ReadAt(p []byte, off int64) (n int, err error) {
 	if !aligned(len(p), off) {
 		// Lock versus read and write of misaligned data so that read/modify/write cycle always gives correct
 		// behavior (read/write is atomic even though misaligned)
-		this.mutex.Lock()
-		defer this.mutex.Unlock()
+		h.mutex.Lock()
+		defer h.mutex.Unlock()
 	}
 	// Start missing aligned part
 	if off%disklib.VIXDISKLIB_SECTOR_SIZE != 0 {
 		tmpBuf := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		err := disklib.Read(this.dli, (uint64)(startSector), 1, tmpBuf)
+		err := disklib.Read(h.dli, (uint64)(startSector), 1, tmpBuf)
 		if err != nil {
 			return 0, mapError(err)
 		}
@@ -222,7 +217,7 @@ func (this DiskConnectHandle) ReadAt(p []byte, off int64) (n int, err error) {
 	if numAlignedSectors > 0 {
 		desOff := total
 		desEnd := total + numAlignedSectors*disklib.VIXDISKLIB_SECTOR_SIZE
-		err := disklib.Read(this.dli, (uint64)(startSector), (uint64)(numAlignedSectors), p[desOff:desEnd])
+		err := disklib.Read(h.dli, (uint64)(startSector), (uint64)(numAlignedSectors), p[desOff:desEnd])
 		if err != nil {
 			return total, mapError(err)
 		}
@@ -232,7 +227,7 @@ func (this DiskConnectHandle) ReadAt(p []byte, off int64) (n int, err error) {
 	// End missing aligned part
 	if (len(p) - total) > 0 {
 		tmpBuf := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		err := disklib.Read(this.dli, (uint64)(startSector), 1, tmpBuf)
+		err := disklib.Read(h.dli, (uint64)(startSector), 1, tmpBuf)
 		if err != nil {
 			return total, mapError(err)
 		}
@@ -244,8 +239,8 @@ func (this DiskConnectHandle) ReadAt(p []byte, off int64) (n int, err error) {
 	return total, nil
 }
 
-func (this DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
-	capacity := this.Capacity()
+func (h DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
+	capacity := h.Capacity()
 	// Just error if either the beginning or the end of the write extends beyond the end
 	if off > capacity || off+int64(len(p)) > capacity {
 		return 0, io.ErrShortWrite
@@ -254,8 +249,8 @@ func (this DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
 	if !aligned(len(p), off) {
 		// Lock versus read and write of misaligned data so that read/modify/write cycle always gives correct
 		// behavior (read/write is atomic even though misaligned)
-		this.mutex.Lock()
-		defer this.mutex.Unlock()
+		h.mutex.Lock()
+		defer h.mutex.Unlock()
 	}
 	var total int64 = 0
 	var srcOff int64 = 0 // start index for p to copy from
@@ -264,7 +259,7 @@ func (this DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
 	// Start missing aligned part
 	if off%disklib.VIXDISKLIB_SECTOR_SIZE != 0 {
 		tmpBuf := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		err := disklib.Read(this.dli, uint64(startSector), 1, tmpBuf)
+		err := disklib.Read(h.dli, uint64(startSector), 1, tmpBuf)
 		if err != nil {
 			return 0, mapError(err)
 		}
@@ -276,7 +271,7 @@ func (this DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
 		desEnd := desOff + count
 		srcEnd = srcOff + count
 		copy(tmpBuf[desOff:desEnd], p[srcOff:srcEnd])
-		err = disklib.Write(this.dli, uint64(startSector), 1, tmpBuf)
+		err = disklib.Write(h.dli, uint64(startSector), 1, tmpBuf)
 		if err != nil {
 			return 0, mapError(err)
 		}
@@ -288,7 +283,7 @@ func (this DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
 	if (int64(len(p))-total)/disklib.VIXDISKLIB_SECTOR_SIZE > 0 {
 		numSector := (int64(len(p)) - total) / disklib.VIXDISKLIB_SECTOR_SIZE
 		srcEnd = srcOff + numSector*disklib.VIXDISKLIB_SECTOR_SIZE
-		err := disklib.Write(this.dli, uint64(startSector), uint64(numSector), p[srcOff:srcEnd])
+		err := disklib.Write(h.dli, uint64(startSector), uint64(numSector), p[srcOff:srcEnd])
 		if err != nil {
 			return int(total), mapError(err)
 		}
@@ -301,43 +296,43 @@ func (this DiskConnectHandle) WriteAt(p []byte, off int64) (n int, err error) {
 		count := int64(len(p)) - total
 		srcEnd = srcOff + count
 		tmpBuf := make([]byte, disklib.VIXDISKLIB_SECTOR_SIZE)
-		err := disklib.Read(this.dli, uint64(startSector), 1, tmpBuf)
+		err := disklib.Read(h.dli, uint64(startSector), 1, tmpBuf)
 		if err != nil {
 			return int(total), mapError(err)
 		}
 		copy(tmpBuf[:count], p[srcOff:srcEnd])
-		err = disklib.Write(this.dli, uint64(startSector), 1, tmpBuf)
+		err = disklib.Write(h.dli, uint64(startSector), 1, tmpBuf)
 		if err != nil {
-			return int(total), errors.Wrap(err, "Write into disk in part 3 failed part3.")
+			return int(total), fmt.Errorf("Write into disk in part 3 failed part3: %w", err)
 		}
 	}
 	return len(p), nil
 }
 
-func (this DiskConnectHandle) Close() error {
-	vErr := disklib.Close(this.dli)
+func (h DiskConnectHandle) Close() error {
+	vErr := disklib.Close(h.dli)
 	if vErr != nil {
-		return errors.New(fmt.Sprintf(vErr.Error()+" with error code: %d", vErr.VixErrorCode()))
+		return fmt.Errorf("failed to close: %w", vErr)
 	}
 
-	vErr = disklib.Disconnect(this.conn)
+	vErr = disklib.Disconnect(h.conn)
 	if vErr != nil {
-		return errors.New(fmt.Sprintf(vErr.Error()+" with error code: %d", vErr.VixErrorCode()))
+		return fmt.Errorf("failed to disconnect: %w", vErr)
 	}
 
-	vErr = disklib.EndAccess(this.params)
+	vErr = disklib.EndAccess(h.params)
 	if vErr != nil {
-		return errors.New(fmt.Sprintf(vErr.Error()+" with error code: %d", vErr.VixErrorCode()))
+		return fmt.Errorf("failed to end access: %w", vErr)
 	}
 
 	return nil
 }
 
-func (this DiskConnectHandle) Capacity() int64 {
-	return int64(this.info.Capacity) * disklib.VIXDISKLIB_SECTOR_SIZE
+func (h DiskConnectHandle) Capacity() int64 {
+	return int64(h.info.Capacity) * disklib.VIXDISKLIB_SECTOR_SIZE
 }
 
 // QueryAllocatedBlocks invokes the VDDK function of the same name.
-func (this DiskConnectHandle) QueryAllocatedBlocks(startSector disklib.VixDiskLibSectorType, numSectors disklib.VixDiskLibSectorType, chunkSize disklib.VixDiskLibSectorType) ([]disklib.VixDiskLibBlock, disklib.VddkError) {
-	return disklib.QueryAllocatedBlocks(this.dli, startSector, numSectors, chunkSize)
+func (h DiskConnectHandle) QueryAllocatedBlocks(startSector disklib.VixDiskLibSectorType, numSectors disklib.VixDiskLibSectorType, chunkSize disklib.VixDiskLibSectorType) ([]disklib.VixDiskLibBlock, disklib.VddkError) {
+	return disklib.QueryAllocatedBlocks(h.dli, startSector, numSectors, chunkSize)
 }

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,10 @@ limitations under the License.
 package main
 
 import (
-	"github.com/vmware/virtual-disks/pkg/disklib"
 	"os"
 	"testing"
+
+	"github.com/yrudtlr/virtual-disks/pkg/disklib"
 )
 
 // To run this test case, the following parameters are all required:
@@ -47,7 +48,7 @@ func TestInitEx(t *testing.T) {
 	fcdId := os.Getenv("FCDID")
 	ds := os.Getenv("DATASTORE")
 	identity := os.Getenv("IDENTITY")
-	params := disklib.NewConnectParams("", serverName,thumPrint, userName,
+	params := disklib.NewConnectParams("", serverName, thumPrint, userName,
 		password, fcdId, ds, "", "", identity, "", disklib.VIXDISKLIB_FLAG_OPEN_COMPRESSION_SKIPZ,
 		false, disklib.NBD)
 	err1 := disklib.PrepareForAccess(params)
